@@ -1,22 +1,41 @@
 {
   "name": "planetwars",
-  "version": "1.0.0",
-  "description": "",
-  "main": "play.js",
+  "version": "0.1.0",
+  "description": "A space-based strategy game where two AIs fight tooth and nail for control of a galaxy.",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "./bin/lint; exit 0;",
+    "lint-all": "./bin/lint all; exit 0;",
+    "lint-precommit": "./bin/lint staged"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/maxbogue/planetwars.git"
+  "precommit": {
+    "run": [
+      "lint-precommit"
+    ],
+    "silent": true
   },
   "author": "",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/maxbogue/planetwars/issues"
-  },
-  "homepage": "https://github.com/maxbogue/planetwars#readme",
+  "contributors": [
+    {
+      "name": "Max Bogue",
+      "url": "http://maxbogue.com"
+    },
+    {
+      "name": "Lexan Smythe-Worthington",
+      "email": "lexan.smythe@gmail.com"
+    }
+  ],
+  "license": "ISC",
   "dependencies": {
-    "lodash": "^4.17.10"
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "lodash": "^4.17.10",
+    "nunjs": "0.0.3",
+    "socket.io": "^2.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^5.0.1",
+    "pre-commit": "^1.2.2"
   }
 }

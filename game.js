@@ -1,32 +1,36 @@
 const cloneDeep = require('lodash/cloneDeep');
 
-const { Fleet, Order, Planet } = require('./dataTypes');
-const { battle, countShips } = require('./utils');
+const { Fleet } = require('./dataTypes');
+const { countShips } = require('./utils');
 const { loadAllAIs, loadAllMaps } = require('./internal');
 
 const AIS = loadAllAIs();
 const MAPS = loadAllMaps();
 
 class NeutralPlayer {
-  play(turn, player, planets, fleets) {
+  play() {
     return [];
   }
+}
+
+function makeAI(name) {
+  return new AIS[name]();
 }
 
 class PlanetWars {
   constructor(players, mapName, turnsPerSecond=2) {
     if (players.length < 2) {
-      throw new Error("A game requires at least two players.");
+      throw new Error('A game requires at least two players.');
     }
     this.playerNames = players;
-    this.players = [new NeutralPlayer()].concat(players.map((p) => new AIS[p]()));
+    this.players = [new NeutralPlayer()].concat(players.map(makeAI));
     this.mapName = mapName;
     let [planets, fleets] = MAPS[mapName];
     this.planets = cloneDeep(planets);
     this.fleets = cloneDeep(fleets);
     this.views = [];
     this.turnsPerSecond = turnsPerSecond;
-    this.turnDuration = 1 / turnsPerSecond;
+    this.turnDuration = 1000 / turnsPerSecond;
     this.turn = 0;
   }
 
@@ -41,29 +45,31 @@ class PlanetWars {
   play() {
     for (let view of this.views) {
       view.initialize(
-          this.turnsPerSecond, this.planets, this.mapName, this.playerNames);
+        this.turnsPerSecond, this.planets, this.mapName, this.playerNames);
       view.update(this.planets, this.fleets);
     }
-    let nextTurn = new Date() + this.turnDuration;
-    let winner = -1;
-    let shipCounts = null;
-    while (winner < 0) {
-      // wait until nextTurn
-      nextTurn += this.turnDuration;
-      this.doTurn();
-      for (let view of this.views) {
-        view.update(this.planets, this.fleets);
-      }
-      [winner, shipCounts] = this.isGameOver();
-    }
+    this.doPlay();
+  }
+
+  doPlay() {
+    let nextTurn = Date.now() + this.turnDuration;
+    this.doTurn();
     for (let view of this.views) {
-      view.gameOver(winner, shipCounts);
+      view.update(this.planets, this.fleets);
+    }
+    let [winner, shipCounts] = this.isGameOver();
+    if (winner < 0) {
+      setTimeout(() => this.doPlay(), nextTurn - Date.now());
+    } else {
+      for (let view of this.views) {
+        view.gameOver(winner, shipCounts);
+      }
     }
   }
 
   doTurn() {
     const play = (player, i) => player.play(
-        this.turn, i, cloneDeep(this.planets), cloneDeep(this.fleets));
+      this.turn, i, cloneDeep(this.planets), cloneDeep(this.fleets));
     // Get orders.
     let playerOrders = this.players.map(play);
     this.turn += 1;
@@ -90,13 +96,14 @@ class PlanetWars {
     this.fleets = this.fleets.filter((fleet) => !fleet.hasArrived());
     for (let planet of this.planets) {
       planet.battle(
-          arrivedFleets.filter((fleet) => fleet.destination === planet));
+        arrivedFleets.filter((fleet) => fleet.destination === planet));
     }
   }
 
   issueOrder(player, order) {
     if (order.source.owner !== player) {
-      throw new Error(`Player ${player} issued an order from enemy planet ${order.source.id}.`);
+      throw new Error(`Player ${player} issued an order from`
+        + `enemy planet ${order.source.id}.`);
     }
     let source = this.planets[order.source.id];
     // Don't let a player send more ships than they have.
@@ -115,7 +122,7 @@ class PlanetWars {
       return [living[0], countShips(this.planets, this.fleets)];
     } else if (this.turn >= 200) {
       let shipCounts = countShips(this.planets, this.fleets);
-      shipCounts = shipCounts.filter(([p, c]) => p > 0);
+      shipCounts = shipCounts.filter(([p]) => p > 0);
       let winner = shipCounts[0][1] === shipCounts[1][1] ? 0 : shipCounts[0][0];
       return [winner, shipCounts];
     }
@@ -132,4 +139,5 @@ class PlanetWars {
   }
 }
 
-module.exports = { PlanetWars };
+module.exports = { PlanetWars , AIS, MAPS };
+
